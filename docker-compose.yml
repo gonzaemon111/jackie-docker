@@ -1,0 +1,57 @@
+version: '3'
+services:
+  jackie_db:
+    image: mysql:5.7
+    ports:
+      - "3308:3306"
+      - "33080:33060"
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    environment:
+      MYSQL_USER: root
+      MYSQL_ROOT_PASSWORD: jackie
+      MYSQL_SOCKET: /var/lib/mysql/mysql.sock
+      MYSQL_HOST: jackie_db
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+  jackie_dbadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=jackie_db
+      - PMA_USER=root
+      - PMA_PASSWORD=jackie
+    links:
+      - jackie_db
+    ports:
+      - 8082:80
+  jackie_server:
+    build: ./server/
+    privileged: true
+    tty: true
+    stdin_open: true
+    restart: always
+    depends_on:
+      - jackie_db
+      - jackie_redis
+    volumes:
+      - ./server:/go/src/server
+    ports:
+      - "8080:8081"
+    env_file:
+      - variables.env
+  jackie_redis:
+    restart: always
+    image: redis:alpine
+    ports:
+      - "6399:6379"
+    command: redis-server --appendonly yes
+  jackie_client:
+    build: ./client/
+    privileged: true
+    tty: true
+    stdin_open: true
+    restart: always
+    volumes:
+      - ./client:/app
+    ports:
+      - "8081:3000"
